@@ -11,7 +11,7 @@ public class Main {
     // Объявления графических компонентов
     private JFrame busList;
     private DefaultTableModel model;
-    private JButton save, addNew, deleted, edit;
+    private JButton save, addNew, deleted, edit, open;
     private JToolBar toolBar;
     private JScrollPane scroll;
     private JTable bus;
@@ -65,6 +65,10 @@ public class Main {
         edit.setBorderPainted(false);
         toolBar.add(edit);
 
+        open = new JButton(new ImageIcon("./img/open.png"));
+        open.setToolTipText("Редактировать");
+        open.setBorderPainted(false);
+        toolBar.add(open);
 
         String [] columns = {"Имя водителя", "Номер маршрута", "Интервал движения"};
         String [][] data = {{"Александр Александрович", "1", "каждые 10 минут"}, {"Алексей Алексеевич", "2", "каждые 5 минут"}};
@@ -100,6 +104,17 @@ public class Main {
                 if(fileName == null) return; // Если пользователь нажал «отмена»
             }
         });
+
+        open.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                FileDialog open = new FileDialog(busList, "Сохранение данных", FileDialog.LOAD);
+                open.setFile("*.txt");
+                open.setVisible(true);
+                String fileName = open.getDirectory() + open.getFile();
+                if(fileName == null) return; // Если пользователь нажал «отмена»
+            }
+        });
+
         filter.addActionListener (new ActionListener() {
             public void actionPerformed (ActionEvent event) {
                 String text = search.getText();
