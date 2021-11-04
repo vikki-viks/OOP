@@ -2,6 +2,8 @@ package com.company;
 import java.awt.*;
 import javax.swing.*;
 import java.awt.event.*;
+import java.io.*;
+import java.nio.charset.Charset;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableModel;
 import javax.swing.table.TableRowSorter;
@@ -101,8 +103,24 @@ public class Main {
                 save.setFile("*.txt");
                 save.setVisible(true); 
                 String fileName = save.getDirectory() + save.getFile();
-                if(fileName == null) return; // Если пользователь нажал «отмена»
+                if(fileName == null) return;
+
+                try {
+                    BufferedWriter writer = new BufferedWriter (new FileWriter(fileName));
+                    for (int i = 0; i < model.getRowCount(); i++)
+                        for (int j = 0; j < model.getColumnCount(); j++) // Для всех столбцов
+                            {
+                                writer.write((String) model.getValueAt(i, j));
+                                writer.write("\n");
+                            }
+                writer.close();
             }
+                catch(IOException er) // Ошибка записи в файл
+            {
+                er.printStackTrace();
+            }
+
+        }
         });
 
         open.addActionListener(new ActionListener() {
@@ -112,7 +130,27 @@ public class Main {
                 open.setVisible(true);
                 String fileName = open.getDirectory() + open.getFile();
                 if(fileName == null) return; // Если пользователь нажал «отмена»
-            }
+
+                try {
+                    BufferedReader reader = new BufferedReader(new FileReader(fileName));
+                    Charset.forName("UTF-8").newEncoder();
+                    int rows = model.getRowCount();
+                    for (int i = 0; i < rows; i++) model.removeRow(0); // Очистка таблицы
+                    String author;
+                    do {
+                        author = reader.readLine();
+                        if(author != null)
+                        {
+                            String title = reader.readLine();
+                            String have = reader.readLine();
+                            model.addRow(new String[]{author, title, have});
+                        }}
+                    while(author != null);
+                        reader.close();
+                    }
+                catch (FileNotFoundException err) {err.printStackTrace();} // файл не найден
+                catch (IOException err) {err.printStackTrace();
+                }}
         });
 
         filter.addActionListener (new ActionListener() {
