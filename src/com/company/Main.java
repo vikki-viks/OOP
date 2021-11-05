@@ -7,7 +7,20 @@ import java.nio.charset.Charset;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableModel;
 import javax.swing.table.TableRowSorter;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
 
+import org.w3c.dom.*;
+import org.xml.sax.SAXException;
+
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerConfigurationException;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+import java.io.File;
 
 public class Main {
     // Объявления графических компонентов
@@ -99,59 +112,112 @@ public class Main {
         
         save.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                FileDialog save = new FileDialog(busList, "Сохранение данных", FileDialog.SAVE);
-                save.setFile("*.txt");
-                save.setVisible(true); 
-                String fileName = save.getDirectory() + save.getFile();
-                if(fileName == null) return;
+//                 FileDialog save = new FileDialog(busList, "Сохранение данных", FileDialog.SAVE);
+//                  save.setFile("");
+//                  save.setVisible(true);
+//                  String fileName = save.getDirectory() + save.getFile();
+//                  if(fileName == null) return;
 
+//                try {
+//                    BufferedWriter writer = new BufferedWriter (new FileWriter(fileName));
+//                    for (int i = 0; i < model.getRowCount(); i++)
+//                        for (int j = 0; j < model.getColumnCount(); j++) // Для всех столбцов
+//                            {
+//                                writer.write((String) model.getValueAt(i, j));
+//                                writer.write("\n");
+//                            }
+//                writer.close();
+//            }
+//                catch(IOException er) // Ошибка записи в файл
+//            {
+//                er.printStackTrace();
+//            }
+//
+//        }
+//        });
                 try {
-                    BufferedWriter writer = new BufferedWriter (new FileWriter(fileName));
+                    DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+                    DocumentBuilder builder = factory.newDocumentBuilder();
+                    Document doc = builder.newDocument();
+                    Node booklist = doc.createElement("busLst");
+                    doc.appendChild(booklist);
                     for (int i = 0; i < model.getRowCount(); i++)
-                        for (int j = 0; j < model.getColumnCount(); j++) // Для всех столбцов
-                            {
-                                writer.write((String) model.getValueAt(i, j));
-                                writer.write("\n");
-                            }
-                writer.close();
-            }
-                catch(IOException er) // Ошибка записи в файл
-            {
-                er.printStackTrace();
-            }
+                    {
+                        Element book = doc.createElement("bus");
+                        booklist.appendChild(book);
+                        book.setAttribute("name", (String)model.getValueAt(i, 0));
+                        book.setAttribute("number", (String)model.getValueAt(i, 1));
+                        book.setAttribute("interval", (String)model.getValueAt(i, 2));
+                    }
+                    try {
+                        Transformer trans = TransformerFactory.newInstance().newTransformer(); // Создание файла с именем books.xml для записи документа
+                        java.io.FileWriter fw = new FileWriter("bus.xml");
+                        trans.transform(new DOMSource(doc), new StreamResult(fw));
+                    }
+                    catch (TransformerConfigurationException error) { error.printStackTrace(); }
+                    catch (TransformerException error) { error.printStackTrace(); }
+                    catch (IOException error) { error.printStackTrace(); }
 
-        }
-        });
+                } catch (ParserConfigurationException ex) {
+                    ex.printStackTrace();
+                }
 
-        open.addActionListener(new ActionListener() {
+
+            }});
+
+                open.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                FileDialog open = new FileDialog(busList, "Сохранение данных", FileDialog.LOAD);
-                open.setFile("*.txt");
-                open.setVisible(true);
-                String fileName = open.getDirectory() + open.getFile();
-                if(fileName == null) return; // Если пользователь нажал «отмена»
+//                FileDialog open = new FileDialog(busList, "Сохранение данных", FileDialog.LOAD);
+//                open.setFile("");
+//                open.setVisible(true);
+//                String fileName = open.getDirectory() + open.getFile();
+//                if(fileName == null) return; // Если пользователь нажал «отмена»
+
+//                try {
+//                    BufferedReader reader = new BufferedReader(new FileReader(fileName));
+//                    Charset.forName("UTF-8").newEncoder();
+//                    int rows = model.getRowCount();
+//                    for (int i = 0; i < rows; i++) model.removeRow(0); // Очистка таблицы
+//                    String author;
+//                    do {
+//                        author = reader.readLine();
+//                        if(author != null)
+//                        {
+//                            String title = reader.readLine();
+//                            String have = reader.readLine();
+//                            model.addRow(new String[]{author, title, have});
+//                        }}
+//                    while(author != null);
+//                        reader.close();
+//                    }
+//                catch (FileNotFoundException err) {err.printStackTrace();} // файл не найден
+//                catch (IOException err) {err.printStackTrace();
+//                }}
+//        });
+                DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 
                 try {
-                    BufferedReader reader = new BufferedReader(new FileReader(fileName));
-                    Charset.forName("UTF-8").newEncoder();
-                    int rows = model.getRowCount();
-                    for (int i = 0; i < rows; i++) model.removeRow(0); // Очистка таблицы
-                    String author;
-                    do {
-                        author = reader.readLine();
-                        if(author != null)
-                        {
-                            String title = reader.readLine();
-                            String have = reader.readLine();
-                            model.addRow(new String[]{author, title, have});
-                        }}
-                    while(author != null);
-                        reader.close();
+                    DocumentBuilder builder = factory.newDocumentBuilder();
+                    Document doc = builder.newDocument();
+                    DocumentBuilder dBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+                    doc = dBuilder.parse(new File("bus.xml"));
+                    doc.getDocumentElement().normalize();
+                    NodeList nlBooks = doc.getElementsByTagName("bus");
+                    for (int temp = 0; temp < nlBooks.getLength(); temp++) {
+                        Node elem = nlBooks.item(temp);
+                        NamedNodeMap attrs = elem.getAttributes();
+                        String name = attrs.getNamedItem("name").getNodeValue();
+                        String number = attrs.getNamedItem("number").getNodeValue();
+                        String interval = attrs.getNamedItem("interval").getNodeValue();
+                        model.addRow(new String[]{name, number, interval});
                     }
-                catch (FileNotFoundException err) {err.printStackTrace();} // файл не найден
-                catch (IOException err) {err.printStackTrace();
-                }}
-        });
+                }
+                catch (ParserConfigurationException er2) { er2.printStackTrace(); } // Обработка ошибки парсера при чтении данных из XML-файла
+                catch (SAXException er2) { er2.printStackTrace(); }
+                catch (IOException er2) { er2.printStackTrace(); }
+
+            }});
+
 
         filter.addActionListener (new ActionListener() {
             public void actionPerformed (ActionEvent event) {
