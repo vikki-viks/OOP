@@ -9,10 +9,8 @@ import javax.swing.table.TableModel;
 import javax.swing.table.TableRowSorter;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
-
 import org.w3c.dom.*;
 import org.xml.sax.SAXException;
-
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerConfigurationException;
@@ -26,7 +24,7 @@ public class Main {
     // Объявления графических компонентов
     private JFrame busList;
     private DefaultTableModel model;
-    private JButton save, addNew, deleted, edit, open;
+    private JButton save, addNew, deleted, edit, open, driversInfo,busIcon, violations;
     private JToolBar toolBar;
     private JScrollPane scroll;
     private JTable bus;
@@ -75,20 +73,30 @@ public class Main {
         deleted.setBorderPainted(false);
         toolBar.add(deleted);
 
-        edit = new JButton(new ImageIcon("./img/edit.png"));
-        edit.setToolTipText("Редактировать");
-        edit.setBorderPainted(false);
-        toolBar.add(edit);
-
         open = new JButton(new ImageIcon("./img/open.png"));
         open.setToolTipText("Редактировать");
         open.setBorderPainted(false);
         toolBar.add(open);
 
-        String [] columns = {"Имя водителя", "Номер маршрута", "Интервал движения"};
-        String [][] data = {{"Александр Александрович", "1", "каждые 10 минут"}, {"Алексей Алексеевич", "2", "каждые 5 минут"}};
+        driversInfo = new JButton(new ImageIcon("./img/driversInfo.png"));
+        driversInfo.setToolTipText("Информация о водителях");
+        driversInfo.setBorderPainted(false);
+        toolBar.add(driversInfo);
 
-        model= new DefaultTableModel(data, columns);
+        violations = new JButton(new ImageIcon("./img/violations.png"));
+        violations.setToolTipText("Нарушения");
+        violations.setBorderPainted(false);
+        toolBar.add(violations);
+
+        busIcon = new JButton(new ImageIcon("./img/busIcon.png"));
+        busIcon.setToolTipText("Спрака о движении маршрутов");
+        busIcon.setBorderPainted(false);
+        toolBar.add(busIcon);
+
+        String[] columns = {"Имя водителя", "Номер маршрута", "Интервал движения"};
+        String[][] data = {{"Александр Александрович", "1", "каждые 10 минут"}, {"Алексей Алексеевич", "2", "каждые 5 минут"}};
+
+        model = new DefaultTableModel(data, columns);
         bus = new JTable(model);
         rowSorter = new TableRowSorter<>(bus.getModel());
         bus.setRowSorter(rowSorter);
@@ -108,8 +116,8 @@ public class Main {
         filterPanel.add(filter);
         busList.add(filterPanel, BorderLayout.SOUTH);
         busList.setVisible(true);
-        
-        
+
+
         save.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
 //                 FileDialog save = new FileDialog(busList, "Сохранение данных", FileDialog.SAVE);
@@ -141,31 +149,34 @@ public class Main {
                     Document doc = builder.newDocument();
                     Node booklist = doc.createElement("busLst");
                     doc.appendChild(booklist);
-                    for (int i = 0; i < model.getRowCount(); i++)
-                    {
+                    for (int i = 0; i < model.getRowCount(); i++) {
                         Element book = doc.createElement("bus");
                         booklist.appendChild(book);
-                        book.setAttribute("name", (String)model.getValueAt(i, 0));
-                        book.setAttribute("number", (String)model.getValueAt(i, 1));
-                        book.setAttribute("interval", (String)model.getValueAt(i, 2));
+                        book.setAttribute("name", (String) model.getValueAt(i, 0));
+                        book.setAttribute("number", (String) model.getValueAt(i, 1));
+                        book.setAttribute("interval", (String) model.getValueAt(i, 2));
                     }
                     try {
                         Transformer trans = TransformerFactory.newInstance().newTransformer(); // Создание файла с именем books.xml для записи документа
                         java.io.FileWriter fw = new FileWriter("bus.xml");
                         trans.transform(new DOMSource(doc), new StreamResult(fw));
+                    } catch (TransformerConfigurationException error) {
+                        error.printStackTrace();
+                    } catch (TransformerException error) {
+                        error.printStackTrace();
+                    } catch (IOException error) {
+                        error.printStackTrace();
                     }
-                    catch (TransformerConfigurationException error) { error.printStackTrace(); }
-                    catch (TransformerException error) { error.printStackTrace(); }
-                    catch (IOException error) { error.printStackTrace(); }
 
                 } catch (ParserConfigurationException ex) {
                     ex.printStackTrace();
                 }
 
 
-            }});
+            }
+        });
 
-                open.addActionListener(new ActionListener() {
+        open.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
 //                FileDialog open = new FileDialog(busList, "Сохранение данных", FileDialog.LOAD);
 //                open.setFile("");
@@ -211,16 +222,15 @@ public class Main {
                         String interval = attrs.getNamedItem("interval").getNodeValue();
                         model.addRow(new String[]{name, number, interval});
                     }
-                }
-                catch (ParserConfigurationException er2) { er2.printStackTrace(); } // Обработка ошибки парсера при чтении данных из XML-файла
-                catch (SAXException er2) { er2.printStackTrace(); }
-                catch (IOException er2) { er2.printStackTrace(); }
+                } catch (Exception er2) {
+                    er2.printStackTrace();
+                } // Обработка ошибки парсера при чтении данных из XML-файла
+            }
+        });
 
-            }});
 
-
-        filter.addActionListener (new ActionListener() {
-            public void actionPerformed (ActionEvent event) {
+        filter.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent event) {
                 String text = search.getText();
                 if (text.trim().length() == 0) {
                     rowSorter.setRowFilter(null);
@@ -229,31 +239,40 @@ public class Main {
                         checkName(search);
                         rowSorter.setRowFilter(RowFilter.regexFilter("(?i)" + text));
                     } catch (MyException e) {
-                        JOptionPane.showMessageDialog(null,e.getMessage());
+                        JOptionPane.showMessageDialog(null, e.getMessage());
                     }
                 }
 
 
-            }});
+            }
+        });
 
         addNew.addActionListener(new ActionListener() {
-            public void actionPerformed (ActionEvent event) {
-               String inputText = JOptionPane.showInputDialog("Введите имя");
-               Object[] row2 = new Object[3];
-               row2[0] = inputText;
-               model.addRow(row2);
+            public void actionPerformed(ActionEvent event) {
+                String inputText = JOptionPane.showInputDialog("Введите имя");
+                Object[] row2 = new Object[3];
+                row2[0] = inputText;
+                model.addRow(row2);
 
             }
         });
 
         search.addFocusListener(new FocusAdapter() {
             public void focusGained(FocusEvent e) {
-                JTextField source = (JTextField)e.getComponent();
+                JTextField source = (JTextField) e.getComponent();
                 source.setText("");
                 source.removeFocusListener(this);
             }
 
         });
+    }
+
+        public void driver() {
+// Создание окна
+            JFrame driverList = new JFrame("Список водителей");
+            driverList.setSize(500, 300);
+            driverList.setLocation(100, 100);
+            driverList.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     }
 
     /**
