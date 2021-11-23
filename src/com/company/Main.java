@@ -252,10 +252,26 @@ public class Main {
                 String inputText = JOptionPane.showInputDialog("Введите имя");
                 Object[] row2 = new Object[3];
                 row2[0] = inputText;
+
+                String inputText2 = JOptionPane.showInputDialog("Введите номер маршрута");
+                row2[1] = inputText2;
+
+                String inputText3 = JOptionPane.showInputDialog("Введите интервал движения");
+                row2[2] = inputText3;
                 model.addRow(row2);
 
             }
         });
+        deleted.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent event) {
+                int rowDeleted = bus.getSelectedRow();
+                if (rowDeleted > -1) {
+                    DefaultTableModel busModel= (DefaultTableModel) bus.getModel();
+                    busModel.removeRow(rowDeleted);
+                }
+            }
+        });
+        
 
         search.addFocusListener(new FocusAdapter() {
             public void focusGained(FocusEvent e) {
@@ -265,6 +281,16 @@ public class Main {
             }
 
         });
+
+        driversInfo.addActionListener(event -> {
+            this.driver();
+        });
+
+        violations.addActionListener(event -> {
+            this.violations();
+        });
+
+
     }
 
         public void driver() {
@@ -272,7 +298,38 @@ public class Main {
             JFrame driverList = new JFrame("Список водителей");
             driverList.setSize(500, 300);
             driverList.setLocation(100, 100);
-            driverList.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            driverList.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+            driverList.setVisible(true);
+
+            String[] columns = {"Номер маршрута", "Нарушение"};
+            String[][] data = {{"Александр Александрович", ""}, {"Алексей Алексеевич", "5 лет", "5"}};
+            model = new DefaultTableModel(data, columns);
+            bus = new JTable(model);
+            rowSorter = new TableRowSorter<>(bus.getModel());
+            bus.setRowSorter(rowSorter);
+            scroll = new JScrollPane(bus);
+
+// Размещение таблицы с данными
+            driverList.add(scroll, BorderLayout.CENTER);
+    }
+    public void violations() {
+// Создание окна
+        JFrame violationList = new JFrame("Список водителей");
+        violationList.setSize(500, 300);
+        violationList.setLocation(100, 100);
+        violationList.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+        violationList.setVisible(true);
+
+        String[] columns = {"Имя водителя", "Стаж работы", "Класс вождения"};
+        String[][] data = {{"Александр Александрович", "20 лет", "13"}, {"Алексей Алексеевич", "5 лет", "5"}};
+        model = new DefaultTableModel(data, columns);
+        bus = new JTable(model);
+        rowSorter = new TableRowSorter<>(bus.getModel());
+        bus.setRowSorter(rowSorter);
+        scroll = new JScrollPane(bus);
+
+// Размещение таблицы с данными
+        violationList.add(scroll, BorderLayout.CENTER);
     }
 
     /**
