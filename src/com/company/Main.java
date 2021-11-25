@@ -19,6 +19,7 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import java.io.File;
+import java.sql.*;
 
 public class Main {
     // Объявления графических компонентов
@@ -31,6 +32,7 @@ public class Main {
     private JTextField search;
     private JButton filter;
     private TableRowSorter<TableModel> rowSorter;
+    private Connection connection;
 
     private class MyException extends Exception {
         public MyException() {
@@ -48,6 +50,15 @@ public class Main {
 //    }
 
     public void show() {
+        String jdbcURL = "jdbc:postgresql://localhost:5432/bus";
+        String username = "postgres";
+        String password = "postgres";
+        try {
+            this.connection = DriverManager.getConnection(jdbcURL, username, password);
+        } catch (SQLException e) {
+            System.out.println("Error");
+            e.printStackTrace();
+        }
 // Создание окна
         busList = new JFrame("Список маршрутов");
         busList.setSize(500, 300);
@@ -94,13 +105,26 @@ public class Main {
         toolBar.add(busIcon);
 
         String[] columns = {"Имя водителя", "Номер маршрута", "Интервал движения"};
-        String[][] data = {{"Александр Александрович", "1", "каждые 10 минут"}, {"Алексей Алексеевич", "2", "каждые 5 минут"}};
+        String[][] data = {};
 
         model = new DefaultTableModel(data, columns);
         bus = new JTable(model);
         rowSorter = new TableRowSorter<>(bus.getModel());
         bus.setRowSorter(rowSorter);
         scroll = new JScrollPane(bus);
+
+        try {
+            Statement stmt = this.connection.createStatement();
+            ResultSet rs = stmt.executeQuery("select \"fullName\", \"intervalInMinutes\", \"number\" from drivers d\n" +
+                    "join buses b on d.\"busId\" = b.id");
+            while (rs.next()) {
+                Object[] row = new Object[3];
+                row[0] = rs.getString("fullName");
+                row[1] = rs.getString("number");
+                row[2] = "каждые " + rs.getString("intervalInMinutes") + " минут";
+                model.addRow(row);
+            }
+        } catch (SQLException e) {}
 
 // Размещение таблицы с данными
         busList.add(scroll, BorderLayout.CENTER);
@@ -301,13 +325,25 @@ public class Main {
             driverList.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
             driverList.setVisible(true);
 
-            String[] columns = {"Номер маршрута", "Нарушение"};
-            String[][] data = {{"Александр Александрович", ""}, {"Алексей Алексеевич", "5 лет", "5"}};
+            String[] columns = {"Имя водителя","Стаж работы", "Класс"};
+            String[][] data = {};
             model = new DefaultTableModel(data, columns);
             bus = new JTable(model);
             rowSorter = new TableRowSorter<>(bus.getModel());
             bus.setRowSorter(rowSorter);
             scroll = new JScrollPane(bus);
+
+            try {
+                Statement stmt = this.connection.createStatement();
+                ResultSet rs = stmt.executeQuery("SELECT \"fullName\", \"class\", DATE_PART('year', AGE(now(), \"beginningDate\")) as years FROM drivers;");
+                while (rs.next()) {
+                    Object[] row = new Object[3];
+                    row[0] = rs.getString("fullName");
+                    row[2] = rs.getString("class");
+                    row[1] =  rs.getString("years") ;
+                    model.addRow(row);
+                }
+            } catch (SQLException e) {}
 
 // Размещение таблицы с данными
             driverList.add(scroll, BorderLayout.CENTER);
@@ -320,13 +356,33 @@ public class Main {
         violationList.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
         violationList.setVisible(true);
 
-        String[] columns = {"Имя водителя", "Стаж работы", "Класс вождения"};
-        String[][] data = {{"Александр Александрович", "20 лет", "13"}, {"Алексей Алексеевич", "5 лет", "5"}};
+        String[] columns = {"Номер автобуса", "Нарушения"};
+        String[][] data = {};
         model = new DefaultTableModel(data, columns);
         bus = new JTable(model);
         rowSorter = new TableRowSorter<>(bus.getModel());
         bus.setRowSorter(rowSorter);
         scroll = new JScrollPane(bus);
+
+        try {
+            Statement stmt = this.connection.createStatement();
+            ResultSet rs = stmt.executeQuery("select \"text\",\"number\" from violations v\n" +
+                    "join buses b on v.\"busId\" = b.id;");
+            while (rs.next()) {
+                Object[] row = new Object[3];
+                row[0] = rs.getString("number");
+                row[1] = rs.getString("text");
+
+                model.addRow(row);
+            }
+        } catch (SQLException e) {}
+
+
+
+
+
+
+
 
 // Размещение таблицы с данными
         violationList.add(scroll, BorderLayout.CENTER);
@@ -337,5 +393,7 @@ public class Main {
      * @param args
      */
     public static void main(String[] args) {
-    new Main().show();
+
+
+        new Main().show();
     } }
