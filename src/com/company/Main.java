@@ -1,4 +1,6 @@
 package com.company;
+import org.w3c.dom.*;
+
 import java.awt.*;
 import javax.swing.*;
 import java.awt.event.*;
@@ -6,12 +8,20 @@ import java.io.*;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableModel;
 import javax.swing.table.TableRowSorter;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerConfigurationException;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 import java.sql.*;
 import java.time.LocalTime;
 import java.util.ArrayList;
 
 public class Main {
-    // Объявления графических компонентов
     private JFrame busList;
     private DefaultTableModel model;
     private JButton save, addNew, deleted, edit, open, driversInfo,busIcon, violations;
@@ -23,6 +33,7 @@ public class Main {
     private TableRowSorter<TableModel> rowSorter;
     private Connection connection;
     private SQL db;
+
 
 
     private class MyException extends Exception {
@@ -45,6 +56,7 @@ public class Main {
             System.out.println("Error");
             e.printStackTrace();
         }
+
 
         busList = new JFrame("Список маршрутов");
         busList.setSize(500, 300);
@@ -69,6 +81,17 @@ public class Main {
         busIcon.setToolTipText("Спрака о движении маршрутов");
         busIcon.setBorderPainted(false);
         toolBar.add(busIcon);
+
+        save = new JButton(new ImageIcon("./img/save.png"));
+        save.setToolTipText("Сохранить");
+        save.setBorderPainted(false);
+        toolBar.add(save);
+
+
+        open = new JButton(new ImageIcon("./img/open.png"));
+        open.setToolTipText("Редактировать");
+        open.setBorderPainted(false);
+        toolBar.add(open);
 
         String[] columns = {"Имя водителя", "Номер маршрута", "Интервал движения"};
         String[][] data = {};
@@ -104,36 +127,19 @@ public class Main {
             save.setVisible(true);
             String fileName = save.getDirectory() + save.getFile();
             if (fileName == null) return;
-
-            String schedule = "";
-
-            try {
-                Statement stmt = this.connection.createStatement();
-                ResultSet rs = stmt.executeQuery("select * from buses");
-
-                while (rs.next()) {
-                    String oneBusSchedule = rs.getString("number") + ": ";
-                    LocalTime startTime =  LocalTime.parse(rs.getString("startTime"));
-                    LocalTime endTime =  LocalTime.parse(rs.getString("endTime"));
-                    int interval = rs.getInt("intervalInMinutes");
-                    while (startTime.isBefore(endTime)) {
-                        oneBusSchedule += startTime.toString() + " ";
-                        startTime = startTime.plusMinutes(interval);
-                    }
-                    schedule += oneBusSchedule + "\n\n";
-                }
-            } catch (SQLException sqlError) {}
-
-            try {
-                BufferedWriter writer = new BufferedWriter (new FileWriter(fileName));
-                writer.write(schedule);
-                writer.close();
-            }
-            catch(IOException er) {
-                er.printStackTrace();
-            }
-
+            String schedule = db.getReport();
+            Report.execute(fileName, schedule);
         });
+
+
+        save.addActionListener(e -> {
+            Export.execute(model);
+        });
+
+        open.addActionListener(e -> {
+            Import.execute(model);
+        });
+
 
         filter.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent event) {
@@ -148,7 +154,6 @@ public class Main {
                         JOptionPane.showMessageDialog(null, e.getMessage());
                     }
                 }
-
 
             }
         });
@@ -169,106 +174,91 @@ public class Main {
         violations.addActionListener(event -> {
             this.violations();
         });
-
-
     }
-
 
     public void driver() {
-// Создание окна
-            JFrame driverList = new JFrame("Список водителей");
-            driverList.setSize(500, 300);
-            driverList.setLocation(100, 100);
-            driverList.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
-            driverList.setVisible(true);
+        JFrame driverList = new JFrame("Список водителей");
+        driverList.setSize(500, 300);
+        driverList.setLocation(100, 100);
+        driverList.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+        driverList.setVisible(true);
 
+        toolBar = new JToolBar("Панель инструментов");
+        driverList.setLayout(new BorderLayout());
+        driverList.add(toolBar, BorderLayout.NORTH);
 
-            toolBar = new JToolBar("Панель инструментов");
-            driverList.setLayout(new BorderLayout());
-            driverList.add(toolBar, BorderLayout.NORTH);
+        addNew = new JButton(new ImageIcon("./img/addNew.png"));
+        addNew.setToolTipText("Добавить");
+        addNew.setBorderPainted(false);
+        toolBar.add(addNew);
 
-            addNew = new JButton(new ImageIcon("./img/addNew.png"));
-            addNew.setToolTipText("Добавить");
-            addNew.setBorderPainted(false);
-            toolBar.add(addNew);
+        deleted = new JButton(new ImageIcon("./img/delete.png"));
+        deleted.setToolTipText("Удалить");
+        deleted.setBorderPainted(false);
+        toolBar.add(deleted);
 
-            deleted = new JButton(new ImageIcon("./img/delete.png"));
-            deleted.setToolTipText("Удалить");
-            deleted.setBorderPainted(false);
-            toolBar.add(deleted);
+        String[] columns = {"Имя водителя","Стаж работы", "Класс"};
+        String[][] data = {};
+        model = new DefaultTableModel(data, columns);
+        bus = new JTable(model);
+        rowSorter = new TableRowSorter<>(bus.getModel());
+        bus.setRowSorter(rowSorter);
+        scroll = new JScrollPane(bus);
+        ArrayList<Integer> ids = new ArrayList<Integer>();
 
-            String[] columns = {"Имя водителя","Стаж работы", "Класс"};
-            String[][] data = {};
-            model = new DefaultTableModel(data, columns);
-            bus = new JTable(model);
-            rowSorter = new TableRowSorter<>(bus.getModel());
-            bus.setRowSorter(rowSorter);
-            scroll = new JScrollPane(bus);
-            ArrayList<Integer> ids = new ArrayList<Integer>();
+        ArrayList<Object[]> result = db.getDriversInfo();
+
+        for (int i = 0; i < result.size(); i += 1) {
+            Object[] row = result.get(i);
+            model.addRow(row);
+        }
+
+        addNew.addActionListener(event -> {
+            String inputText = JOptionPane.showInputDialog("Введите имя вводителя");
+            Object[] row2 = new Object[3];
+            row2[0] = inputText;
+
+            String inputText2 = JOptionPane.showInputDialog("Введите стаж работы");
+            row2[1] = inputText2;
+
+            String inputText3 = JOptionPane.showInputDialog("Введите класс");
+            row2[2] = inputText3;
+
+            String inputText4 = JOptionPane.showInputDialog("Введите номер автобуса");
 
             try {
-                Statement stmt = this.connection.createStatement();
-                ResultSet rs = stmt.executeQuery("SELECT \"id\", \"fullName\", \"class\", DATE_PART('year', AGE(now(), \"beginningDate\")) as years FROM drivers;");
-                while (rs.next()) {
-                    ids.add(new Integer(rs.getString("id")));
-                    Object[] row = new Object[3];
-                    row[0] = rs.getString("fullName");
-                    row[2] = rs.getString("class");
-                    row[1] =  rs.getString("years") ;
-                    model.addRow(row);
-                }
-            } catch (SQLException e) {}
+                String sql = "INSERT INTO drivers (\"fullName\", \"class\", \"beginningDate\", \"busId\") VALUES(?, ?, now() - INTERVAL '" + inputText2 + " year', (SELECT id FROM buses b WHERE b. \"number\" = ?));";
+                PreparedStatement stmt = this.connection.prepareStatement(sql);
+                stmt.setString(1,  inputText);
+                stmt.setString(2, inputText3);
+                stmt.setInt(3, new Integer(inputText4));
+                System.out.println(stmt.toString());
+                stmt.executeUpdate();
+                model.addRow(row2);
+            } catch (SQLException e) {
+                System.out.println(e.getMessage());
+            }
+        });
 
-            addNew.addActionListener(event -> {
-                String inputText = JOptionPane.showInputDialog("Введите имя вводителя");
-                Object[] row2 = new Object[3];
-                row2[0] = inputText;
-
-                String inputText2 = JOptionPane.showInputDialog("Введите стаж работы");
-                row2[1] = inputText2;
-
-                String inputText3 = JOptionPane.showInputDialog("Введите класс");
-                row2[2] = inputText3;
-
-                String inputText4 = JOptionPane.showInputDialog("Введите номер автобуса");
-
+        deleted.addActionListener(event -> {
+            int rowDeleted = bus.getSelectedRow();
+            if (rowDeleted > -1) {
+                Integer idToDelete = ids.get(rowDeleted);
                 try {
-                    String sql = "INSERT INTO drivers (\"fullName\", \"class\", \"beginningDate\", \"busId\") VALUES(?, ?, now() - INTERVAL '" + inputText2 + " year', (SELECT id FROM buses b WHERE b. \"number\" = ?));";
+                    DefaultTableModel busModel= (DefaultTableModel) bus.getModel();
+                    busModel.removeRow(rowDeleted);
+                    String sql = "DELETE FROM drivers WHERE \"id\" = ?";
                     PreparedStatement stmt = this.connection.prepareStatement(sql);
-                    stmt.setString(1,  inputText);
-                    stmt.setString(2, inputText3);
-                    stmt.setInt(3, new Integer(inputText4));
-                    System.out.println(stmt.toString());
+                    stmt.setInt(1, idToDelete);
                     stmt.executeUpdate();
+                } catch (SQLException e) {}
+            }
+        });
 
-                    model.addRow(row2);
-                } catch (SQLException e) {
-                    System.out.println(e.getMessage());
-                }
-
-            });
-            deleted.addActionListener(event -> {
-                int rowDeleted = bus.getSelectedRow();
-                if (rowDeleted > -1) {
-                    Integer idToDelete = ids.get(rowDeleted);
-                    try {
-                        DefaultTableModel busModel= (DefaultTableModel) bus.getModel();
-                        busModel.removeRow(rowDeleted);
-
-                        String sql = "DELETE FROM drivers WHERE \"id\" = ?";
-                        PreparedStatement stmt = this.connection.prepareStatement(sql);
-                        stmt.setInt(1, idToDelete);
-                        stmt.executeUpdate();
-                    } catch (SQLException e) {}
-
-                }
-            });
-// Размещение таблицы с данными
-            driverList.add(scroll, BorderLayout.CENTER);
+        driverList.add(scroll, BorderLayout.CENTER);
     }
     public void violations() {
-// Создание окна
-        JFrame violationList = new JFrame("Список водителей");
+        JFrame violationList = new JFrame("Список нарушений");
         violationList.setSize(500, 300);
         violationList.setLocation(100, 100);
         violationList.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
@@ -297,21 +287,13 @@ public class Main {
         scroll = new JScrollPane(bus);
 
         ArrayList<Integer> ids = new ArrayList<Integer>();
+        ArrayList<Object[]> result = db.getViolations();
 
+        for (int i = 0; i < result.size(); i += 1) {
+            Object[] row = result.get(i);
+            model.addRow(row);
+        }
 
-        try {
-            Statement stmt = this.connection.createStatement();
-            ResultSet rs = stmt.executeQuery("select v.\"id\",\"text\",\"number\" from violations v\n" +
-                    "join buses b on v.\"busId\" = b.id;");
-            while (rs.next()) {
-                ids.add(new Integer(rs.getString("id")));
-                Object[] row = new Object[3];
-                row[0] = rs.getString("number");
-                row[1] = rs.getString("text");
-
-                model.addRow(row);
-            }
-        } catch (SQLException e) {}
 
         addNew.addActionListener(event -> {
             String inputText = JOptionPane.showInputDialog("Введите номер автобуса");
@@ -335,6 +317,7 @@ public class Main {
             model.addRow(row2);
 
         });
+
         deleted.addActionListener(event -> {
             int rowDeleted = bus.getSelectedRow();
             if (rowDeleted > -1) {
@@ -348,12 +331,10 @@ public class Main {
                     PreparedStatement stmt = this.connection.prepareStatement(sql);
                     stmt.setInt(1, idToDelete);
                     stmt.executeUpdate();
-                } catch (SQLException e) {
-                }
+                } catch (SQLException e) {}
             }
         });
 
-// Размещение таблицы с данными
         violationList.add(scroll, BorderLayout.CENTER);
     }
 
@@ -363,4 +344,5 @@ public class Main {
      */
     public static void main(String[] args) {
         new Main().show();
-    } }
+    }
+}
